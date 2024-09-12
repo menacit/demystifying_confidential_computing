@@ -49,8 +49,10 @@ benefits / problems / risks.
 ![bg right:30%](images/lock_pin.jpg)
 
 <!--
+- No ground breaking research
+- Spare you the trauma, humble jesus
 - 64 slides, X minutes
-- Excited?
+- Excited? White with black
 -->
 
 ---
@@ -63,6 +65,7 @@ _(If you have ideas for improvements/clarifications, drop a PR!)_
 ![bg right 90%](qr_codes/presentation_zip.link.svg)
 
 <!--
+- Not a Webview 0day, promise.
 -->
 
 ---
@@ -78,9 +81,9 @@ _(If you have ideas for improvements/clarifications, drop a PR!)_
 <!--
 - Know what CAs are, x509, or pretend
 - PtH ain't Snoop dog
-- Love for acronyms would not hurt
+- Love for acronyms and sceptic mindset would not hurt
 
-Segue: Save you from my trauma...
+Segue: Thankfully the bar before my talk...
 -->
 
 ---
@@ -94,6 +97,7 @@ in (air) quotes, shout "Drink"!
 <!--
 - Hold me accountable
 - Play along
+- Test run
 -->
 
 ---
@@ -108,7 +112,7 @@ _(Still responsible for **a**vailability, though)_
 ![bg right:30%](images/lion_statue.jpg)
 
 <!--
-- Kidnap an actual engineer
+- Kidnap an actual engineer / go to OSFC
 - Talking smack about the CIA triad
 - No magic wand for availability, this ain't a "block chain" technology
 -->
@@ -139,6 +143,9 @@ _(This could also help small regional providers)_
 ![bg right:30%](images/business_man_graffiti.jpg)
 
 <!--
+- Besos doesn't own every computer on the planet
+- Make up Gartner numbers
+- Won't get into the debate if they're right
 - Scary being an infrastructure provider
 -->
 
@@ -156,6 +163,7 @@ Physical protection of hardware may not be...
 
 <!--
 - Imaginary workloads, HYPE!
+- Phreakers back in the days will know
 -->
 
 ---
@@ -172,6 +180,7 @@ Wouldn't it be nice to wrap it in a black box?
 ![bg right:30%](images/optics.jpg)
 
 <!--
+- Tried to come up with some offensive use-cases for all the red people in here
 -->
 
 ---
@@ -196,6 +205,8 @@ snooping and manipulation.
 ![bg right:30%](images/rusty_guard.jpg)
 
 <!--
+- Saying that "they take our security very seriously" ain't enough
+- So we need some way for the system to prove it
 -->
 
 ---
@@ -211,6 +222,9 @@ new programming techniques and great care.
 ![bg right:30%](images/desert_hut.jpg)
 
 <!--
+- At least ten years
+- Or an attempt to solve this at least
+- You won't be running SAP in a SGX enclave
 -->
 
 ---
@@ -230,6 +244,7 @@ into a world of wonderful confidentiality.
 ![bg right:30%](images/retro_computer.jpg)
 
 <!--
+- Can keep doing what we've always been doing
 -->
 
 ---
@@ -247,6 +262,9 @@ Moving forward, we'll primarily focus on AMD's
 ![bg right:30%](images/green_cables.jpg)
 
 <!--
+- Intel VTD builds upon SGX
+- Narrow our scope, we ain't got all the time
+- Choose AMD SEV, least insane approach according to people in the know
 -->
 
 ---
@@ -266,12 +284,14 @@ let's have a walk-through of some fundamentals:
 <!--
 - Help us understand coco
 - Speed-run
+- We'll take some short-cuts and simplifications
 -->
 
 ---
 ![bg center 90%](diagrams/basic_boot.svg)
 
 <!--
+- A bit of an artist, not fancy animation like Joris
 - Any component can be malicious
 - The earlier, the harder to detect
 -->
@@ -281,6 +301,8 @@ let's have a walk-through of some fundamentals:
 
 <!--
 - Some people slighly hopeful, some sad
+- Have a trust store with CA's
+- EFI stub acts as a work-around for the broken revocation structure
 - Make it work, not secure
 - initrd, command line
 -->
@@ -321,6 +343,7 @@ and logging of HSM usage.
 ![bg center 90%](diagrams/measured_boot.svg)
 
 <!--
+- Perhaps you heard MC's talk yesterday
 - Pseudo-code for hash chain
 - A link in the chain falsify the measurement of following links, but not previous.
 - In essence, we have an append-only data structure
@@ -350,7 +373,11 @@ of digests (measurements) and their order.
 ![bg right:30%](images/lock_chain.jpg)
 
 <!--
-- Where do we store this hash chain safely?
+- Perhaps this very pedagogical slide can help?
+- Append-only, chronological data struct
+- Lie about the future, but not the past
+
+Segeu: Where do we store this hash chain safely?
 -->
 
 ---
@@ -370,6 +397,7 @@ secure against attackers with physical access)_
 ![bg right:30%](images/wheel.jpg)
 
 <!--
+- We put in measurements/digests, but TPM handles the hash chain
 -->
 
 ---
@@ -392,6 +420,9 @@ signed reports of the TPM/PCR state.
 ![bg right:30%](images/bismuth.jpg)
 
 <!--
+- Spring pub talk about YK key attestation
+- We can validate this signature using the certificate and the vendor CA
+- Have some confidence that the measurements haven't been tampered with
 -->
 
 ---
@@ -444,6 +475,8 @@ checkout [Keylime](https://keylime.dev/) and the
 ![bg right:30%](images/moss_face.jpg)
 
 <!--
+- Quite neat, didn't expect that program to be executed?
+- Shout out to Mullvad / Tillitis / Glasklar
 -->
 
 ---
@@ -477,6 +510,10 @@ to the hypervisor / VMM.
 ![bg right:30%](images/pixel_forest.jpg)
 
 <!--
+- Each guest gets it own key
+- Hypervisor can read, but encrypted data
+- Protection to prevent hypervisor/other guests from manipulation memory
+- Doesn't always work - foreshadowing, ohhh
 -->
 
 ---
@@ -497,6 +534,7 @@ Holds a burnt-in secret used to derive EKs.
 ![bg right:30%](images/asp_closeup.jpg)
 
 <!--
+- Not only sec: helps with bring-up, DRAM training
 -->
 
 ---
@@ -520,6 +558,7 @@ the untrusted hypervisor.
 ![bg right:30%](images/cyberpunk_wall.jpg)
 
 <!--
+- Can't talk directly with the SP
 -->
 
 ---
@@ -535,6 +574,8 @@ the untrusted hypervisor.
 
 <!--
 - Version number == SPL == SVN
+- Is SMT enabled? Or debug access? Could be good to know
+- Version numbers, not hashes
 -->
 
 ---
@@ -555,6 +596,7 @@ process is left to the vFW:
 ![bg right:30%](images/cd_macro.jpg)
 
 <!--
+- Based on Tianocore EDK II
 - The YOLO approach is also an option.
 -->
 
@@ -578,6 +620,8 @@ prevent spoofing of its version numbers.
 ![bg right:30%](images/spheres.jpg)
 
 <!--
+- Derivation happens in a very trusted part of the SP, the SP'ss SP
+- Not a bad idea, vulns will appear, they learned that the hard way with SEV
 -->
 
 ---
@@ -603,6 +647,8 @@ _(we'll get back to this, don't worry)_
 ![bg right:30%](images/seal.jpg)
 
 <!--
+- VCEK changes over time, no pre-provisioned cert
+- Grab values from unverified report
 -->
 
 ---
@@ -644,6 +690,8 @@ _(Please don't blame yours truly when you forget to nuke the lab environment!)_
 ![bg right:30%](images/tivoli.jpg)
 
 <!--
+- Deposit $50 to play with big iron
+- Still work on automating BIOS configuration
 -->
 
 ---
@@ -663,6 +711,9 @@ secrets to authorized clients.
 ![bg right:30%](images/tower.jpg)
 
 <!--
+- A makefile and Ansible running in a container
+- Hypervisor with QEMU + KVM
+- Verifier runs Trustee, spinn-off from COCO project, works many TEEs
 -->
 
 ---
@@ -683,6 +734,7 @@ _(Joel \<3 [u-root](https://u-root.org/))_
 
 <!--
 - Description of example application/VM
+- Wanna build small Linux systems? Check out u-root
 -->
 
 ---
@@ -711,6 +763,7 @@ echo -n "${SECRET}" | base64 -d | shasum -a 256 | cut -d ' ' -f 1
 ```
 
 <!--
+- We'll zoom in on the relevant parts
 -->
 
 ---
@@ -728,6 +781,8 @@ echo "Parsed verifier host: \"${VERIFIER_HOST}\""
 ```
 
 <!--
+- Need net to reach the verifier
+- Read verifier host from SMBIOS, don't need to hardcode it in the initrd
 -->
 
 ---
@@ -744,6 +799,9 @@ echo -n "${SECRET}" | base64 -d | shasum -a 256 | cut -d ' ' -f 1
 ```
 
 <!--
+- kbs-client (key broker service) will ask the verifier for a secret
+- Granted that verifier accepts the attestation report (more later)
+- Spit's it out on stdout
 -->
 
 ---
@@ -841,6 +899,7 @@ Parsed verifier host: "213.24.76.23"
 ```
 
 <!--
+- Nothing too exciting
 -->
 
 ---
@@ -855,6 +914,9 @@ Shutting down system in 30 seconds
 ```
 
 <!--
+- Look at that, a digest!
+
+Segue: Did it really work? Drumroll please...
 -->
 
 ---
@@ -873,6 +935,7 @@ $ sha256sum artifacts/guest_secret.txt
 ![bg right:30%](images/party.jpg)
 
 <!--
+Woho!
 -->
 
 ---
@@ -888,6 +951,8 @@ $ sha256sum artifacts/guest_secret.txt
 ![bg right:30%](images/thinking_graffiti.jpg)
 
 <!--
+- Very similar to regular remotely attested boot
+- We can include a public key in the signed report, used for encrypting the secret
 -->
 
 ---
@@ -905,6 +970,7 @@ Or just change the virtual firmware?
 ![bg right:30%](images/brick_hole.jpg)
 
 <!--
+- Anyone who's locked them self out of a Linux box have done this
 -->
 
 ---
@@ -915,6 +981,7 @@ the launch measurement.
 ![bg right:30%](images/brick_hole.jpg)
 
 <!--
+Yeah.
 -->
 
 ---
@@ -937,7 +1004,10 @@ OpenSUSE/SLES is likely a good choice.
 ![bg right:30%](images/chameleon.jpg)
 
 <!--
-- Coconut rust OS
+- Coconut SVSM: Mini-OS running in guest and handling a lot of SEV stuff
+- Everyone wants "SmartNICs" and GPUs, may contain sensitive data
+- Great FW security track records
+- Tech preview in SLES, lots of involvement in development
 -->
 
 ---
@@ -951,6 +1021,8 @@ OpenSUSE/SLES is likely a good choice.
 ![bg right:30%](images/umbrellas.jpg)
 
 <!--
+- Would you ask this question?
+- We're at SEC-T after all...
 -->
 
 ---
@@ -969,6 +1041,9 @@ is correct-ish, but a weak argument.
 ![bg right:30%](images/led_emoji.jpg)
 
 <!--
+- Doing great work with OpenSIL, but not only minor code dump for SEV
+- There is a difference living with the risk of your airgapped CPU performing nasty instructions
+
 Segue: Let's just hope that there aren't any catastrophic vulnerabilities in these components...
 -->
 
@@ -990,6 +1065,10 @@ Segue: Let's just hope that there aren't any catastrophic vulnerabilities in the
 — _Excerpts from ["One Glitch To Rule Them All" paper (2021)](https://arxiv.org/pdf/2108.04575)_
 
 <!--
+- Authors PoCed this on 3rd generation EPYCs
+- Protection provided by VCEK was broken
+
+Segue: My favorite part of this paper...
 -->
 
 ---
@@ -1001,6 +1080,8 @@ Segue: Let's just hope that there aren't any catastrophic vulnerabilities in the
 — _Excerpts from ["One Glitch To Rule Them All" paper (2021)](https://arxiv.org/pdf/2108.04575)_
 
 <!--
+- \_o_/
+
 - Segue: It's not just AMD...
 -->
 
@@ -1008,6 +1089,8 @@ Segue: Let's just hope that there aren't any catastrophic vulnerabilities in the
 ![bg center 50%](images/sgx_dead_screenshot.png)
 
 <!--
+- I scrot this a few weeks ago
+- Sad sad sad
 -->
 
 ---
@@ -1029,10 +1112,14 @@ VCEK certificates on-the-fly.
 
 Hope they protect it well.
 
-
 ![bg right:30%](images/james_webb.jpg)
 
 <!--
+- Outage, DDoS, discontinued or embargo
+- Don't like your CPUs serial number?
+- Even if they don't loose EK, some CAs might be toast
+- Pre-gen possible VCEKs? 44B. AMD says no.
+- If you're the GRU, I wouldn't migrate to AWS just yet
 -->
 
 ---
@@ -1053,7 +1140,9 @@ but a long road ahead.
 ![bg right:30%](images/rusty_lock.jpg)
 
 <!--
+- Intel project to harden kernel
 - Sisyphus problem
+- Would you trust a malicious actor to randomly plugin devices in your machine?
 -->
 
 ---
@@ -1091,6 +1180,7 @@ _(perhaps a good investment even if you don't plan on using CVMs)_
 ![bg right:30%](images/galley_carts.jpg)
 
 <!--
+- One could argue you should do these things anyway
 -->
 
 ---
@@ -1100,8 +1190,9 @@ _(perhaps a good investment even if you don't plan on using CVMs)_
 ![bg right:30%](images/lizard.jpg)
 
 <!--
-- Very kool, quite brittle at the moment 
+- Very kool, quite brittle at the moment
 - Budget and not specific use-case, money spent better other places
+- What's in the future? Perhaps we can wish for something sane in the RISC V world
 -->
 
 ---
@@ -1117,6 +1208,9 @@ _(perhaps a good investment even if you don't plan on using CVMs)_
 
 <!--
 - German gentlemen, know an awful lot and very patience
+- Will politely yell at me for all my wrongs
+- Fantastic blog
+- Lots of foss
 - Learned a lot, thanks
 -->
 
