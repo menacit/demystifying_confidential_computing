@@ -1,0 +1,12 @@
+[Unit]
+Description=Trustee key broker service
+
+[Service]
+Type=simple
+User=kbs
+Group=kbs
+WorkingDirectory=/opt/kbs
+ExecStart=/opt/kbs/kbs --config-file configuration.toml
+
+[Install]
+WantedBy=multi-user.target

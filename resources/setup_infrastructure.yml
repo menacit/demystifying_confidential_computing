@@ -1,0 +1,193 @@
+---
+# -------------------------------------------------------------------------------------------------
+- name: "Vultr infrastructure setup playbook"
+  hosts: "localhost"
+  gather_facts: false
+  vars:
+    "virtual_plan_id": "vc2-1c-2gb"
+    "bare_metal_plan_id": "vbm-24c-256gb-amd"
+    "override_region": ""
+    "ssh_user": "root"
+    "ssh_private_key": "artifacts/id_ed25519"
+    "ssh_arguments": >-
+      -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=artifacts/known_hosts
+  tasks:
+    # ---------------------------------------------------------------------------------------------
+    - name: "Check if inventory file in artifact directory exists"
+      ansible.builtin.stat:
+        path: "artifacts/inventory.yml"
+      register: "artifact_inventory_file"
+    # ---------------------------------------------------------------------------------------------
+    - name: "End playbook if inventory file already exists"
+      ansible.builtin.meta: "end_play"
+      when: "artifact_inventory_file.stat.isreg is defined and artifact_inventory_file.stat.isreg"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate SSH key-pair"
+      community.crypto.openssh_keypair:
+        path: "{{ ssh_private_key }}"
+        type: "ed25519"
+      register: "ssh_key"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Configure SSH key in Vultr"
+      vultr.cloud.ssh_key:
+        name: "setup_sev_test_env_key"
+        ssh_key: "{{ ssh_key.public_key }}"
+        state: "present"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Query virtual plans for availability"
+      vultr.cloud.plan_info: {}
+      register: "virtual_plans"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Query bare metal plans for availability"
+      vultr.cloud.plan_metal_info: {}
+      register: "bare_metal_plans"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Filter region where virtual instance flavor is available"
+      ansible.builtin.set_fact:
+        "virtual_region": >-
+          {{
+            virtual_plans.vultr_plan_info |
+            moreati.jq.jq('.[] | select(.id == "' + virtual_plan_id + '") | .locations') |
+            ansible.builtin.random
+          }}
+    # ---------------------------------------------------------------------------------------------
+    - name: "Filter region where bare metal instance flavor is available"
+      ansible.builtin.set_fact:
+        "bare_metal_region": >-
+          {{
+            bare_metal_plans.vultr_plan_metal_info |
+            moreati.jq.jq('.[] | select(.id == "' + bare_metal_plan_id + '") | .locations') |
+            ansible.builtin.random
+          }}
+    # ---------------------------------------------------------------------------------------------
+    - name: "Override deployment region if variable is set"
+      ansible.builtin.set_fact:
+        "virtual_region": "{{ override_region }}"
+        "bare_metal_region": "{{ override_region }}"
+      when: "override_region"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Start instance spawning process"
+      block:
+        # -----------------------------------------------------------------------------------------
+        - name: "Spawn virtual instance for verifier"
+          vultr.cloud.instance:
+            label: "x-sev-test-verifier"
+            hostname: "x-sev-test-verifier"
+            region: "{{ virtual_region }}"
+            plan: "{{ virtual_plan_id }}"
+            os: "Ubuntu 24.04 LTS x64"
+            ssh_keys:
+              - "setup_sev_test_env_key"
+            enable_ipv6: false
+            ddos_protection: false
+            backups: false
+            state: "present"
+          register: "virtual_instance"
+        # -----------------------------------------------------------------------------------------
+        - name: "Spawn bare metal instance for hypervisor"
+          vultr.cloud.bare_metal:
+            label: "x-sev-test-hypervisor"
+            hostname: "x-sev-test-hypervisor"
+            region: "{{ bare_metal_region }}"
+            plan: "{{ bare_metal_plan_id }}"
+            os: "Ubuntu 24.04 LTS x64"
+            ssh_keys:
+              - "setup_sev_test_env_key"
+            enable_ipv6: false
+            state: "present"
+          register: "bare_metal_instance"
+        # -----------------------------------------------------------------------------------------
+        - name: "Wait for verifier instance to actually be available over SSH after deploy"
+          ansible.builtin.wait_for:
+            host: "{{ virtual_instance.vultr_instance.main_ip }}"
+            port: 22
+            sleep: 3
+            timeout: 300
+        # -----------------------------------------------------------------------------------------
+        - name: "Wait for hypervisor instance to actually be available over SSH after deploy"
+          ansible.builtin.wait_for:
+            host: "{{ bare_metal_instance.vultr_bare_metal.main_ip }}"
+            port: 22
+            sleep: 3
+            timeout: 600
+      # ------------------------------------------------------------------------------------------
+      rescue:
+        # -----------------------------------------------------------------------------------------
+        - name: "Include destroy infrastructure role"
+          ansible.builtin.include_role:
+            name: "destroy_infrastructure"
+        # -----------------------------------------------------------------------------------------
+        - name: "Fail playbook due to deployment error"
+          ansible.builtin.fail:
+            msg: "Failed to create virtual or bare metal instance"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Set facts for SSH remote access and hypervisor console URL"
+      ansible.builtin.set_fact:
+        "ssh_base_command": "ssh -l {{ ssh_user }} -i {{ ssh_private_key }} {{ ssh_arguments }}"
+        "hypervisor_console_url": >-
+          https://my.vultr.com/subs/baremetal/novnc/?id={{ 
+            bare_metal_instance.vultr_bare_metal.id
+          }}
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate inventory structure fact"
+      ansible.builtin.set_fact:
+        "inventory_structure":
+          all:
+            vars:
+              ansible_user: "{{ ssh_user }}"
+              ansible_private_key_file: "{{ ssh_private_key }}"
+              ansible_ssh_common_args: "{{ ssh_arguments }}"
+              virtual_region: "{{ virtual_region }}"
+              bare_metal_region: "{{ bare_metal_region }}"
+              hypervisor_console_url: "{{ hypervisor_console_url }}"
+            hosts:
+              hypervisor:
+                ansible_host: "{{ bare_metal_instance.vultr_bare_metal.main_ip }}"
+              verifier:
+                ansible_host: "{{ virtual_instance.vultr_instance.main_ip }}"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Render Ansible-compatible inventory to artifacts directory"
+      ansible.builtin.copy:
+        content: "{{ inventory_structure | to_yaml(indent=2) }}"
+        dest: "artifacts/inventory.yml"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Render SSH commands for hypervisor and verifier access to artifacts directory"
+      ansible.builtin.copy:
+        content: |
+          #!/usr/bin/env bash
+          {{ ssh_base_command }} {{ item.ip_address }}
+        dest: "artifacts/ssh_{{ item.name }}"
+        mode: "700"
+      loop:
+        - name: "verifier"
+          ip_address: "{{ virtual_instance.vultr_instance.main_ip }}"
+        - name: "hypervisor"
+          ip_address: "{{ bare_metal_instance.vultr_bare_metal.main_ip }}"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Print information regarding system settings configuration on Dell PowerEdge C6525"
+      ansible.builtin.debug:
+        msg: |-
+          Infrastructure has been deployed in the Vultr cloud! Time for some "exciting" manual
+          configuration of system ("BIOS") settings on the bare metal hypervisor instance.
+          Open "{{ hypervisor_console_url }}" in a
+          web browser, click the "Send CtrlAltDel" button in the top right corner to initiate a
+          reboot, wait/experience boredom, press "F2" to enter system setup, select "System setup"
+          in the menu and modify the following settings:
+          - Processor settings > Secure Memory Encryption: Enabled
+          - Processor settings > Minimum SEV non-ES ASID: 100
+          - Processor settings > Secure Nested Paging: Enabled
+          - Processor settings > SNP Memory Coverage: Enabled
+          - Processor settings > Transparent Secure Memory Encryption: Enabled
+          Click "Finish" to save changes and reboot the system.
+    # ---------------------------------------------------------------------------------------------
+    - name: "Wait for user confirmation"
+      ansible.builtin.pause:
+        prompt: "Press enter when system configuration has been modified and applied"
+        echo: false
+    # ---------------------------------------------------------------------------------------------
+    - name: "Wait for hypervisor instance to actually be available over SSH after reconfiguration"
+      ansible.builtin.wait_for:
+        host: "{{ bare_metal_instance.vultr_bare_metal.main_ip }}"
+        port: 22
+        sleep: 3
+        timeout: 600

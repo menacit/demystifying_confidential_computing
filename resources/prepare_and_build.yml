@@ -1,0 +1,35 @@
+---
+# -------------------------------------------------------------------------------------------------
+- name: "Setup certificate authority"
+  hosts: "localhost"
+  gather_facts: false
+  tasks:
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate private key for CA"
+      community.crypto.openssl_privatekey:
+        path: "artifacts/ca.key"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate CSR for CA"
+      community.crypto.openssl_csr:
+        path: "artifacts/ca.csr"
+        privatekey_path: "artifacts/ca.key"
+        common_name: "setup_sev_test_env-CA"
+        use_common_name_for_san: false
+        basic_constraints:
+          - "CA:TRUE"
+        basic_constraints_critical: false
+        key_usage:
+          - "keyCertSign"
+        key_usage_critical: true
+    # ---------------------------------------------------------------------------------------------
+    - name: "Self-sign certificate for CA"
+      community.crypto.x509_certificate:
+        path: "artifacts/ca.crt"
+        csr_path: "artifacts/ca.csr"
+        privatekey_path: "artifacts/ca.key"
+        provider: "selfsigned"
+# -------------------------------------------------------------------------------------------------
+- name: "Build applications, libraries and artifacts required for lab environment"
+  hosts: "{{ build_host }}"
+  roles:
+    - "builder"

@@ -1,0 +1,13 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Clone snpguest repository"
+  ansible.builtin.git:
+    repo: "https://github.com/virtee/snpguest.git"
+    dest: "{{ build_cache_directory }}/snpguest"
+# -------------------------------------------------------------------------------------------------
+- name: "Build snpguest"
+  ansible.builtin.command:
+    argv:
+      - "cargo"
+      - "build"
+      - "--release"
+    chdir: "{{ build_cache_directory }}/snpguest"

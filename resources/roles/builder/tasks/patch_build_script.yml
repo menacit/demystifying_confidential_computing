@@ -1,0 +1,53 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Patch AMDSEV build script to not use the build host's run-time kernel configuration path"
+  ansible.builtin.lineinfile:
+    path: "{{ build_cache_directory }}/AMDSEV/common.sh"
+    search_string: "run_cmd \"cp /boot/config-$(uname -r) .config\""
+    line: "run_cmd \"cp {{ build_cache_directory }}/kernel_configuration .config\""
+    state: "present"
+# -------------------------------------------------------------------------------------------------
+- name: "Patch AMDSEV build script to explicitly enable relevant kernel module"
+  ansible.builtin.replace:
+    path: "{{ build_cache_directory }}/AMDSEV/common.sh"
+    regexp: "--module"
+    replace: "--enable"
+# -------------------------------------------------------------------------------------------------
+- name: "Patch AMDSEV build script to build an OVMF compatible with direct kernel boot"
+  ansible.builtin.replace:
+    path: "{{ build_cache_directory }}/AMDSEV/common.sh"
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  loop:
+    - regexp: "OvmfPkgX64"
+      replace: "AmdSev/AmdSevX64"
+    - regexp: "OvmfX64"
+      replace: "AmdSev"
+# -------------------------------------------------------------------------------------------------
+- name: "Patch AMDSEV build script to build an OVMF without embeded Grub"
+  ansible.builtin.lineinfile:
+    path: "{{ build_cache_directory }}/AMDSEV/common.sh"
+    insertafter: "run_cmd make -C BaseTools"
+    line: "touch OvmfPkg/AmdSev/Grub/grub.efi"
+    state: "present"
+# -------------------------------------------------------------------------------------------------
+- name: "Patch AMDSEV build script to exclude non-existing OVMF artifacts"
+  ansible.builtin.lineinfile:
+    path: "{{ build_cache_directory }}/AMDSEV/common.sh"
+    regexp: "OVMF_(CODE|VARS)\\.fd"
+    state: "absent"
+# -------------------------------------------------------------------------------------------------
+- name: "Patch AMDSEV build script variables to use alternative branches for kernel and QEMU"
+  ansible.builtin.replace:
+    path: "{{ build_cache_directory }}/AMDSEV/stable-commits"
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  loop:
+    - regexp: "KERNEL_HOST_BRANCH=\"snp-host-latest\""
+      replace: "KERNEL_HOST_BRANCH=\"snp-host-v15\""
+    - regexp: "QEMU_BRANCH=\"snp-latest\""
+      replace: "QEMU_BRANCH=\"snp-v4-wip3c\""
+# -------------------------------------------------------------------------------------------------
+- name: "Copy kernel build configuration"
+  ansible.builtin.copy:
+    src: "kernel_configuration"
+    dest: "{{ build_cache_directory }}/kernel_configuration"

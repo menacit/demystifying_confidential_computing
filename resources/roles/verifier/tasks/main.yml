@@ -1,0 +1,159 @@
+---
+# -------------------------------------------------------------------------------------------------
+- name: "Configure firewall rule to allow HTTPS traffic to verifier"
+  ansible.builtin.command:
+    argv:
+      - "ufw"
+      - "allow"
+      - "8443"
+  changed_when: false
+# -------------------------------------------------------------------------------------------------
+- name: "Install dependency packages for adding custom HTTPS repositories"
+  ansible.builtin.apt:
+    name:
+      - "ca-certificates"
+      - "gpg-agent"
+    force_apt_get: true
+    install_recommends: false
+    cache_valid_time: 900
+    state: "present"
+# -------------------------------------------------------------------------------------------------
+- name: "Configure PGP signing key for Intel SGX repository (required for Trustee components)"
+  ansible.builtin.apt_key:
+    url: "https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key"
+    id: "150434D1488BF80308B69398E5C7F0FA1C6C6C3C"
+    keyring: "/usr/share/keyrings/intel-sgx.gpg"
+    state: "present"
+# -------------------------------------------------------------------------------------------------
+- name: "Configure Intel SGX repository (targeting 22.04, repository for 24.04 not yet available)"
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/intel-sgx.gpg]
+      https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main
+    state: "present"
+# -------------------------------------------------------------------------------------------------
+- name: "Install runtime dependencies for Trustee KBS from OS package repositories"
+  ansible.builtin.apt:
+    name:
+      - "libtdx-attest"
+      - "libtss2-tctildr0"
+      - "libsgx-dcap-quote-verify"
+    force_apt_get: true
+    install_recommends: false
+    cache_valid_time: 900
+    state: "present"
+  become: true
+# -------------------------------------------------------------------------------------------------
+- name: "Create service user for KBS"
+  ansible.builtin.user:
+    name: "kbs"
+    home: "/opt/kbs"
+    create_home: false
+    system: true
+    state: "present"
+# -------------------------------------------------------------------------------------------------
+- name: "Ensure that KBS base directory is present"
+  ansible.builtin.file:
+    path: "/opt/kbs"
+    owner: "root"
+    group: "kbs"
+    mode: "750"
+    state: "directory"
+# -------------------------------------------------------------------------------------------------
+- name: "Ensure that KBS sub-directories are present"
+  ansible.builtin.file:
+    path: "/opt/kbs/{{ item }}"
+    owner: "root"
+    group: "kbs"
+    mode: "770"
+    state: "directory"
+  loop:
+    - "repository/default/test"
+    - "attestation_service"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy executable for KBS"
+  ansible.builtin.copy:
+    src: "artifacts/kbs"
+    dest: "/opt/kbs/kbs"
+    mode: "750"
+    owner: "root"
+    group: "kbs"
+  register: "kbs_executable_file"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy configuration file for KBS"
+  ansible.builtin.copy:
+    src: "configuration.toml"
+    dest: "/opt/kbs/configuration.toml"
+    mode: "640"
+    owner: "root"
+    group: "kbs"
+  register: "kbs_configuration_file"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy server certificate for KBS"
+  ansible.builtin.copy:
+    src: "artifacts/verifier.crt"
+    dest: "/opt/kbs/verifier.crt"
+    mode: "640"
+    owner: "root"
+    group: "kbs"
+  register: "kbs_certificate_file"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy server certificate key for KBS"
+  ansible.builtin.copy:
+    src: "artifacts/verifier.key"
+    dest: "/opt/kbs/verifier.key"
+    mode: "640"
+    owner: "root"
+    group: "kbs"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy administration public key for KBS"
+  ansible.builtin.copy:
+    src: "artifacts/verifier_admin.pub"
+    dest: "/opt/kbs/verifier_admin.pub"
+    mode: "640"
+    owner: "root"
+    group: "kbs"
+  register: "kbs_administration_key_file"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy generated secret for KBS serving"
+  ansible.builtin.copy:
+    src: "artifacts/guest_secret.txt"
+    dest: "/opt/kbs/repository/default/test/my_secret"
+    mode: "660"
+    owner: "root"
+    group: "kbs"
+# -------------------------------------------------------------------------------------------------
+- name: "Render policy file for KBS"
+  ansible.builtin.template:
+    src: "policy.rego.j2"
+    dest: "/opt/kbs/policy.rego"
+    mode: "640"
+    owner: "root"
+    group: "kbs"
+  register: "kbs_policy_file"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy systemd service file for KBS"
+  ansible.builtin.copy:
+    src: "kbs.service"
+    dest: "/etc/systemd/system/kbs.service"
+  register: "kbs_service_file"
+# -------------------------------------------------------------------------------------------------
+- name: "Re-exec systemd if service file for KBS has changed" 
+  ansible.builtin.systemd_service:
+    daemon_reexec: true
+  when: "kbs_service_file.changed"
+# -------------------------------------------------------------------------------------------------
+- name: "Restart systemd service for KBS if executable or configuration has changed"
+  ansible.builtin.systemd_service:
+    name: "kbs.service"
+    state: "restarted"
+  when: >-
+    kbs_executable_file.changed or kbs_configuration_file.changed or kbs_policy_file.changed or
+    kbs_certificate_file.changed or kbs_service_file.changed or
+    kbs_administration_key_file.changed
+# -------------------------------------------------------------------------------------------------
+- name: "Ensure that systemd service for KBS is enabled and running"
+  ansible.builtin.systemd_service:
+    name: "kbs.service"
+    enabled: true
+    state: "started"

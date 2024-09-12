@@ -1,0 +1,43 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Build AMDSEV component: Guest kernel (this may take a looooooong time)"
+  ansible.builtin.command:
+    argv:
+      - "./build.sh"
+      - "kernel"
+      - "guest"
+    chdir: "{{ build_cache_directory }}/AMDSEV"
+# -------------------------------------------------------------------------------------------------
+- name: "Find guest kernel build artifacts"
+  ansible.builtin.find:
+    paths:
+      - "{{ build_cache_directory }}/AMDSEV/linux/guest/debian"
+    patterns:
+      - "vmlinuz-*-snp-guest-*"
+    recurse: true
+  register: "guest_kernel_build_artifacts"
+# -------------------------------------------------------------------------------------------------
+- name: "Get modification time of guest kernel build artifacts"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ guest_kernel_build_artifacts.files | map(attribute='path') }}"
+  register: "guest_kernel_build_artifact_stats"
+# -------------------------------------------------------------------------------------------------
+- name: "Set fact for freshest guest kernel build artifact"
+  ansible.builtin.set_fact:
+    "freshest_guest_kernel_build_artifact": >-
+      {{
+        guest_kernel_build_artifact_stats.results
+        | map(attribute='stat') | sort(attribute='mtime') | last
+      }}
+# -------------------------------------------------------------------------------------------------
+- name: "Copy freshest guest kernel artifact to build cache directory"
+  ansible.builtin.copy:
+    src: "{{ freshest_guest_kernel_build_artifact.path }}"
+    dest: "{{ build_cache_directory }}/guest_kernel.vmlinuz"
+    remote_src: true
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch freshest guest kernel build artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/guest_kernel.vmlinuz"
+    dest: "artifacts/guest_kernel.vmlinuz"
+    flat: true

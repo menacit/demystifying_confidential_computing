@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e -o pipefail
+
+echo "Starting confidential program with arguments: ${@}"
+
+echo "Executing pre-flight check for guest SNP support"
+snpguest ok
+
+echo "Trying to obtain network configuration via DHCP"
+dhclient -ipv4=true -ipv6=false
+
+echo "Trying to read verifier host address from SMBIOS field"
+VERIFIER_HOST="$(dmidecode -t 11 | grep "verifier_host" | cut -d : -f 2)"
+echo "Parsed verifier host: \"${VERIFIER_HOST}\""
+
+echo "Request secret from verifier with attestation report"
+SECRET="$(kbs-client \
+	--url "https://${VERIFIER_HOST}:8443" --cert-file /etc/ca.crt \
+	get-resource --path default/test/my_secret)"
+
+echo "I will not tell you my secret, but the hash of it is:"
+echo -n "${SECRET}" | base64 -d | shasum -a 256 | cut -d ' ' -f 1

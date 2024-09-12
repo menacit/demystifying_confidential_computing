@@ -1,0 +1,22 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Build AMDSEV component: QEMU"
+  ansible.builtin.command:
+    argv:
+      - "./build.sh"
+      - "qemu"
+    chdir: "{{ build_cache_directory }}/AMDSEV"
+# -------------------------------------------------------------------------------------------------
+- name: "Generate compressed archive of relevant QEMU build artifacts"
+  ansible.builtin.command:
+    argv:
+      - "tar"
+      - "zcvf"
+      - "{{ build_cache_directory }}/qemu.tar.gz"
+      - "local"
+    chdir: "{{ build_cache_directory }}/AMDSEV/usr"
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch QEMU build artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/qemu.tar.gz"
+    dest: "artifacts/qemu.tar.gz"
+    flat: true

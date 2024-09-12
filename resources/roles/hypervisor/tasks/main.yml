@@ -1,0 +1,90 @@
+---
+# -------------------------------------------------------------------------------------------------
+- name: "Install QEMU runtime dependency SLiRP"
+  ansible.builtin.apt:
+    name:
+      - "libslirp0"
+    force_apt_get: true
+    install_recommends: false
+    cache_valid_time: 900
+    state: "present"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy KVM kernel module configuration"
+  ansible.builtin.copy:
+    src: "artifacts/kvm.conf"
+    dest: "/etc/modprobe.d/kvm.conf"
+    mode: "644"
+  register: "kvm_configuration_file"
+# -------------------------------------------------------------------------------------------------
+- name: "Ensure that SEV directories are present"
+  ansible.builtin.file:
+    path: "sev/qemu"
+    state: "directory"
+# -------------------------------------------------------------------------------------------------
+- name: "Unarchive QEMU build artifacts"
+  ansible.builtin.unarchive:
+    src: "artifacts/qemu.tar.gz"
+    dest: "sev/qemu"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy VM launch script to SEV directory"
+  ansible.builtin.copy:
+    src: "start_confidential_vm"
+    dest: "sev/start_confidential_vm"
+    mode: "700"
+# -------------------------------------------------------------------------------------------------
+- name: "Generate variables file for VM launch script"
+  ansible.builtin.copy:
+    content: "VERIFIER_HOST={{ hostvars.verifier.ansible_host }}"
+    dest: "sev/confidential_vm.vars"
+    mode: "600"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy remaining relevant artifacts to SEV directory"
+  ansible.builtin.copy:
+    src: "artifacts/{{ item }}"
+    dest: "sev/{{ item }}"
+    mode: "700"
+  loop:
+    - "host_kernel.deb"
+    - "libsev.so"
+    - "snphost"
+    - "qemu.tar.gz"
+    - "OVMF.fd"
+    - "guest_kernel.vmlinuz"
+    - "guest_initrd.cpio"
+# -------------------------------------------------------------------------------------------------
+- name: "Install host kernel package"
+  ansible.builtin.apt:
+    deb: "sev/host_kernel.deb"
+    state: "present"
+  register: "host_kernel_package"
+# -------------------------------------------------------------------------------------------------
+- name: "Reboot system if KVM module configuration or host kernel package has changed"
+  ansible.builtin.reboot:
+    msg: "Rebooting due to kernel upgrade"
+  when: "kvm_configuration_file.changed or host_kernel_package.changed"
+# -------------------------------------------------------------------------------------------------
+- name: "Run SEV-SNP compatibility check"
+  ansible.builtin.command:
+    argv:
+      - "sev/snphost"
+      - "ok"
+  changed_when: false
+# -------------------------------------------------------------------------------------------------
+- name: "Download chip-/FW-specific VCEK for extended attestation"
+  ansible.builtin.command:
+    argv:
+      - "sev/snphost"
+      - "fetch"
+      - "vcek"
+      - "der"
+      - "sev"
+    creates: "sev/vcek.der"
+# -------------------------------------------------------------------------------------------------
+- name: "Convert VCEK file to \"GHCB\" format for extended attestation"
+  ansible.builtin.command:
+    argv:
+      - "sev/snphost"
+      - "import"
+      - "sev"
+      - "sev/vcek.ghcb"
+    creates: "sev/vcek.ghcb"

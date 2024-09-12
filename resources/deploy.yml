@@ -1,0 +1,54 @@
+---
+# -------------------------------------------------------------------------------------------------
+- name: "Pre-deployment key and certificate generation"
+  hosts: "localhost"
+  gather_facts: false
+  tasks:
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate private key for verifier"
+      community.crypto.openssl_privatekey:
+        path: "artifacts/verifier.key"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate CSR for verifier"
+      community.crypto.openssl_csr:
+        path: "artifacts/verifier.csr"
+        privatekey_path: "artifacts/verifier.key"
+        common_name: "{{ hostvars.verifier.ansible_host }}"
+        subject_alt_name: "IP:{{ hostvars.verifier.ansible_host }}"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate certificate for verifier"
+      community.crypto.x509_certificate:
+        path: "artifacts/verifier.crt"
+        csr_path: "artifacts/verifier.csr"
+        ownca_path: "artifacts/ca.crt"
+        ownca_privatekey_path: "artifacts/ca.key"
+        provider: "ownca"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate private key for verifier administration"
+      community.crypto.openssl_privatekey:
+        path: "artifacts/verifier_admin.key"
+        type: "Ed25519"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate public key for verifier administration"
+      community.crypto.openssl_publickey:
+        path: "artifacts/verifier_admin.pub"
+        privatekey_path: "artifacts/verifier_admin.key"
+    # ---------------------------------------------------------------------------------------------
+    - name: "Generate secret for KBS serving"
+      ansible.builtin.copy:
+        content: >-
+          {{
+            'Sommar' + lookup(
+              'ansible.builtin.password', 'artifacts/guest_secret_suffix.txt', length=8)
+          }}
+        dest: "artifacts/guest_secret.txt"
+# -------------------------------------------------------------------------------------------------
+- name: "Apply base role for verifier"
+  hosts: "verifier"
+  roles:
+    - "verifier"
+# -------------------------------------------------------------------------------------------------
+- name: "Apply base role for hypervisor"
+  hosts: "hypervisor"
+  roles:
+    - "hypervisor"

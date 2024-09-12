@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo "Shutting down system in 30 seconds"
+sleep 30s
+poweroff

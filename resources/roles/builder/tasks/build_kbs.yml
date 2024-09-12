@@ -1,0 +1,19 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Clone Trustee repository"
+  ansible.builtin.git:
+    repo: "https://github.com/confidential-containers/trustee.git"
+    dest: "{{ build_cache_directory }}/trustee"
+# -------------------------------------------------------------------------------------------------
+- name: "Build Trustee KBS"
+  ansible.builtin.command:
+    argv:
+      - "make"
+      - "background-check-kbs"
+      - "POLICY_ENGINE=opa"
+    chdir: "{{ build_cache_directory }}/trustee/kbs"
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch Trustee KBS build artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/trustee/target/release/kbs"
+    dest: "artifacts/kbs"
+    flat: true

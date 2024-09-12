@@ -1,0 +1,30 @@
+---
+# ---------------------------------------------------------------------------------------------
+- name: "Delete virtual instance for verifier"
+  vultr.cloud.instance:
+    label: "x-sev-test-verifier"
+    hostname: "x-sev-test-verifier"
+    region: "{{ virtual_region }}"
+    state: "absent"
+# ---------------------------------------------------------------------------------------------
+- name: "Delete bare metal instance for hypervisor"
+  vultr.cloud.bare_metal:
+    label: "x-sev-test-hypervisor"
+    hostname: "x-sev-test-hypervisor"
+    region: "{{ bare_metal_region }}"
+    state: "absent"
+# ---------------------------------------------------------------------------------------------
+- name: "Delete SSH key configuration in Vultr"
+  vultr.cloud.ssh_key:
+    name: "setup_sev_test_env_key"
+    state: "absent"
+# ---------------------------------------------------------------------------------------------
+- name: "Delete infrastructure artifact files"
+  ansible.builtin.file:
+    path: "artifacts/{{ item }}"
+    state: "absent"
+  loop:
+    - "id_ed25519"
+    - "id_ed25519.pub"
+    - "inventory.yml"
+    - "known_hosts"

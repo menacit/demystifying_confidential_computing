@@ -1,0 +1,14 @@
+package policy
+
+default allow = false
+expected_measurement := "{{ lookup('ansible.builtin.file', 'artifacts/guest_measurement.hex') }}"
+
+allow {
+  data["resource-path"] == "default/test/my_secret"
+
+  input["tee"] == "snp"
+  to_number(input["tcb-status"]["snp.reported_tcb_microcode"]) >= 210
+  input["tcb-status"]["snp.platform_tsme_enabled"] == "1"
+
+  input["tcb-status"]["snp.measurement"] == expected_measurement
+}

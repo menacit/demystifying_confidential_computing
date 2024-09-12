@@ -1,0 +1,19 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Clone snphost repository"
+  ansible.builtin.git:
+    repo: "https://github.com/virtee/snphost.git"
+    dest: "{{ build_cache_directory }}/snphost"
+# -------------------------------------------------------------------------------------------------
+- name: "Build snphost"
+  ansible.builtin.command:
+    argv:
+      - "cargo"
+      - "build"
+      - "--release"
+    chdir: "{{ build_cache_directory }}/snphost"
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch snphost build artifacts to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/snphost/target/release/snphost"
+    dest: "artifacts/snphost"
+    flat: true

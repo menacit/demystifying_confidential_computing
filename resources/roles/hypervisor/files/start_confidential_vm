@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -e
+
+cd ~/sev
+source confidential_vm.vars
+
+if [[ -z "${KERNEL_COMMAND_LINE}" ]]; then
+  KERNEL_COMMAND_LINE="console=ttyS0"
+fi
+
+if [[ -z "${INITRD_FILE}" ]]; then
+  INITRD_FILE="guest_initrd.cpio"
+fi
+
+CBIT_POSITION=51
+
+qemu/local/bin/qemu-system-x86_64 \
+  -no-reboot -nographic -vga none \
+  -enable-kvm -cpu EPYC-v4 -machine pc-q35-7.1 \
+  -smp 1,maxcpus=1 -m 512M,slots=5,maxmem=1024M \
+  -netdev user,id=net0 -device virtio-net-pci,netdev=net0,romfile= \
+  -object rng-random,filename=/dev/random,id=rng0 \
+  -device virtio-rng-pci,rng=rng0,romfile= \
+  -object sev-snp-guest,id=sev0,cbitpos=${CBIT_POSITION},reduced-phys-bits=1,kernel-hashes=on,certs-path=vcek.ghcb \
+  -machine memory-encryption=sev0,vmport=off \
+  -object memory-backend-memfd,id=ram1,size=512M,share=true,prealloc=false \
+  -machine memory-backend=ram1 \
+  -smbios type=11,value=verifier_host:${VERIFIER_HOST} \
+  -bios OVMF.fd -kernel guest_kernel.vmlinuz \
+  -append "${KERNEL_COMMAND_LINE}" -initrd "${INITRD_FILE}"

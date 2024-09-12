@@ -1,0 +1,66 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Copy CA certificate for guest initrd"
+  ansible.builtin.copy:
+    src: "artifacts/ca.crt"
+    dest: "{{ build_cache_directory }}/ca.crt"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy default fallback program for guest initrd"
+  ansible.builtin.copy:
+    src: "sleep_and_poweroff"
+    dest: "{{ build_cache_directory }}/sleep_and_poweroff"
+    mode: "755"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy example confidential program for guest initrd"
+  ansible.builtin.copy:
+    src: "confidential_program"
+    dest: "{{ build_cache_directory }}/confidential_program"
+    mode: "755"
+# -------------------------------------------------------------------------------------------------
+- name: "Generate guest initrd using u-root"
+  ansible.builtin.command:
+    argv:
+      - "{{ go_directory }}/bin/u-root"
+      - "-files"
+      - "/usr/bin/bash:bin/bash"
+      - "-files"
+      - "{{ build_cache_directory }}/sleep_and_poweroff:bin/sleep_and_poweroff"
+      - "-files"
+      - "/usr/bin/cut:bin/cut"
+      - "-files"
+      - "/usr/bin/base64:bin/base64"
+      - "-files"
+      - "{{ build_cache_directory }}/snpguest/target/release/libsev.so:lib/libsev.so"
+      - "-files"
+      - "{{ build_cache_directory }}/snpguest/target/release/snpguest:bin/snpguest"
+      - "-files"
+      - "{{ build_cache_directory }}/trustee/target/release/kbs-client:bin/kbs-client"
+      - "-files"
+      - "{{ build_cache_directory }}/ca.crt:etc/ca.crt"
+      - "-files"
+      - "{{ build_cache_directory }}/confidential_program:bin/confidential_program"
+      - "-uinitcmd"
+      - "/bin/confidential_program default"
+      - "-defaultsh"
+      - "/bin/sleep_and_poweroff"
+      - "./cmds/core/init"
+      - "./cmds/core/sleep"
+      - "./cmds/core/poweroff"
+      - "./cmds/core/dhclient"
+      - "./cmds/core/grep"
+      - "./cmds/core/shasum"
+      - "./cmds/exp/dmidecode"
+    chdir: "{{ build_cache_directory }}/u-root"
+  environment:
+    "GOPATH": "{{ go_directory }}"
+# -------------------------------------------------------------------------------------------------
+- name: "Copy guest initrd to build cache directory"
+  ansible.builtin.copy:
+    src: "/tmp/initramfs.linux_amd64.cpio"
+    dest: "{{ build_cache_directory }}/guest_initrd.cpio"
+    remote_src: true
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch guest initrd build artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/guest_initrd.cpio"
+    dest: "artifacts/guest_initrd.cpio"
+    flat: true

@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: © 2024 Menacit AB <foss@menacit.se>
+# SPDX-License-Identifier: CC0-1.0
+# X-Context: "Demystifying confidential computing" presentation - Containerfile for SEV setup tools
+
+FROM docker.io/library/ubuntu:24.04
+ARG BUILD_UID=1000
+
+RUN apt-get update \
+	&& apt-get install --assume-yes --no-install-recommends \
+		ansible ca-certificates git sudo python3-pip \
+	&& rm -rf /var/lib/apt-get/lists/* \
+	&& apt-get autoremove -y \
+	&& pip3 install --break-system-packages jq==1.8.0 \
+	&& userdel ubuntu \
+	&& useradd --create-home --shell /bin/bash --uid $BUILD_UID cuser \
+	&& echo 'cuser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/cuser
+
+VOLUME ["/data"]
+WORKDIR /data
+USER cuser
+
+RUN ansible-galaxy collection install \
+		community.crypto:2.21.1 moreati.jq:0.2.1 vultr.cloud:1.13.0

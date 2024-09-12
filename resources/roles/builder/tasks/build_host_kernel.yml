@@ -1,0 +1,38 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Build AMDSEV component: Host kernel (this may take a looooooong time)"
+  ansible.builtin.command:
+    argv:
+      - "./build.sh"
+      - "kernel"
+      - "host"
+    chdir: "{{ build_cache_directory }}/AMDSEV"
+# -------------------------------------------------------------------------------------------------
+- name: "Find host kernel build artifacts"
+  ansible.builtin.find:
+    paths:
+      - "{{ build_cache_directory }}/AMDSEV/linux"
+    patterns:
+      - "linux-image-*-host-*.deb"
+    excludes:
+      - "linux-image-*-host-*-dbg_*.deb"
+  register: "host_kernel_build_artifacts"
+# -------------------------------------------------------------------------------------------------
+- name: "Get modification time of host kernel build artifacts"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ host_kernel_build_artifacts.files | map(attribute='path') }}"
+  register: "host_kernel_build_artifact_stats"
+# -------------------------------------------------------------------------------------------------
+- name: "Set fact for freshest host kernel build artifact"
+  ansible.builtin.set_fact:
+    "freshest_host_kernel_build_artifact": >-
+      {{
+        host_kernel_build_artifact_stats.results
+        | map(attribute='stat') | sort(attribute='mtime') | last
+      }}
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch freshest host kernel build artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ freshest_host_kernel_build_artifact.path }}"
+    dest: "artifacts/host_kernel.deb"
+    flat: true

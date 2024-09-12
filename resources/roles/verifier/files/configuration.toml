@@ -1,0 +1,27 @@
+sockets = [ "0.0.0.0:8443" ]
+certificate = "verifier.crt"
+private_key = "verifier.key"
+auth_public_key = "verifier_admin.pub"
+
+[attestation_token_config]
+attestation_token_type = "CoCo"
+
+[repository_config]
+type = "LocalFs"
+dir_path = "/opt/kbs/repository"
+
+[as_config]
+work_dir = "/opt/kbs/attestation_service"
+policy_engine = "opa"
+attestation_token_broker = "Simple"
+
+[as_config.attestation_token_config]
+duration_min = 5
+
+[as_config.rvps_config]
+remote_addr = ""
+store_type = "LocalFs"
+store_config = { file_path = "/opt/kbs/attestation_service/reference_values" }
+
+[policy_engine_config]
+policy_path = "/opt/kbs/policy.rego"

@@ -1,0 +1,14 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Clone u-root repository"
+  ansible.builtin.git:
+    repo: "https://github.com/u-root/u-root.git"
+    dest: "{{ build_cache_directory }}/u-root"
+# -------------------------------------------------------------------------------------------------
+- name: "Build and install u-root"
+  ansible.builtin.command:
+    argv:
+      - "go"
+      - "install"
+    chdir: "{{ build_cache_directory }}/u-root"
+  environment:
+    "GOPATH": "{{ go_directory }}"

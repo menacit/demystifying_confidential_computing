@@ -1,0 +1,45 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Clone sev-snp-measure repository"
+  ansible.builtin.git:
+    repo: "https://github.com/virtee/sev-snp-measure.git"
+    dest: "{{ build_cache_directory }}/sev-snp-measure"
+# -------------------------------------------------------------------------------------------------
+- name: "Produce measurement of guest artifacts using sev-snp-measure"
+  ansible.builtin.command:
+    argv:
+      - "./sev-snp-measure.py"
+      - "--verbose"
+      - "--output-format"
+      - "base64"
+      - "--mode"
+      - "snp"
+      - "--guest-features"
+      - "0x1"
+      - "--vmm-type"
+      - "QEMU"
+      - "--vcpu-type"
+      - "EPYC-v4"
+      - "--vcpus"
+      - "1"
+      - "--ovmf"
+      - "{{ build_cache_directory }}/AMDSEV/usr/local/share/qemu/OVMF.fd"
+      - "--kernel"
+      - "{{ build_cache_directory }}/guest_kernel.vmlinuz" 
+      - "--initrd"
+      - "{{ build_cache_directory }}/guest_initrd.cpio"
+      - "--append"
+      - "console=ttyS0"
+    chdir: "{{ build_cache_directory }}/sev-snp-measure"
+  register: "measurement_command"
+# -------------------------------------------------------------------------------------------------
+- name: "Write guest measurement to build cache directory"
+  ansible.builtin.copy:
+    content: >-
+      {{ measurement_command.stdout | replace('Calculated SEV_SNP guest measurement: ', '') }}
+    dest: "{{ build_cache_directory }}/guest_measurement.hex"
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch guest measurement artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/guest_measurement.hex"
+    dest: "artifacts/guest_measurement.hex"
+    flat: true

@@ -1,0 +1,13 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Build AMDSEV component: OVMF"
+  ansible.builtin.command:
+    argv:
+      - "./build.sh"
+      - "ovmf"
+    chdir: "{{ build_cache_directory }}/AMDSEV"
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch OVMF build artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/AMDSEV/usr/local/share/qemu/OVMF.fd"
+    dest: "artifacts/OVMF.fd"
+    flat: true

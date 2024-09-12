@@ -1,0 +1,214 @@
+---
+# -------------------------------------------------------------------------------------------------
+- name: "Ensure that build cache directory is present"
+  ansible.builtin.file:
+    path: "build_cache"
+    state: "directory"
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Setting variables for build cache directories"
+  ansible.builtin.set_fact:
+    "build_cache_directory": "{{ ansible_env.PWD }}/build_cache"
+    "go_directory": "{{ ansible_env.PWD }}/build_cache/go"
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Install dependency packages for adding custom HTTPS repositories"
+  ansible.builtin.apt:
+    name:
+      - "ca-certificates"
+      - "gpg-agent"
+    force_apt_get: true
+    install_recommends: false
+    cache_valid_time: 900
+    state: "present"
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Configure PGP signing key for Intel SGX repository (required for Trustee components)"
+  ansible.builtin.apt_key:
+    url: "https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key"
+    id: "150434D1488BF80308B69398E5C7F0FA1C6C6C3C"
+    keyring: "/usr/share/keyrings/intel-sgx.gpg"
+    state: "present"
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Configure Intel SGX repository (targeting 22.04, repository for 24.04 not yet available)"
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/intel-sgx.gpg]
+      https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main
+    state: "present"
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Install build dependencies from OS package repositories"
+  ansible.builtin.apt:
+    name:
+      - "acpica-tools"
+      - "asciidoctor"
+      - "bc"
+      - "bison"
+      - "build-essential"
+      - "ca-certificates"
+      - "cmake"
+      - "cpio"
+      - "debhelper"
+      - "devscripts"
+      - "dpkg-dev"
+      - "flex"
+      - "git"
+      - "golang"
+      - "kmod"
+      - "libbz2-dev"
+      - "libclang-dev"
+      - "libcurl4-openssl-dev"
+      - "libelf-dev"
+      - "libglib2.0-dev"
+      - "liblzo2-dev"
+      - "libseccomp2"
+      - "libssl-dev"
+      - "libssl-dev"
+      - "libslirp-dev"
+      - "libsqlite3-dev"
+      - "libprotobuf-dev"
+      - "libtdx-attest-dev"
+      - "libsgx-dcap-quote-verify-dev"
+      - "libtss2-dev"
+      - "meson"
+      - "mtools"
+      - "nasm"
+      - "protobuf-compiler"
+      - "pkg-config"
+      - "python3-venv"
+      - "python-is-python3"
+      - "rsync"
+      - "rustup"
+      - "sbsigntool"
+      - "sparse"
+      - "systemd-ukify"
+      - "protobuf-compiler"
+      - "openssl"
+      - "uuid-dev"
+      - "zstd"
+    force_apt_get: true
+    install_recommends: false
+    cache_valid_time: 900
+    state: "present"
+  become: true
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Configure default Rust toolchain (stable)"
+  ansible.builtin.command:
+    argv:
+      - "rustup"
+      - "default"
+      - "stable"
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Ensure that build cache directory is present"
+  ansible.builtin.file:
+    path: "build_cache"
+    state: "directory"
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Clone AMDSEV base repository (snp-latest branch)"
+  ansible.builtin.git:
+    repo: "https://github.com/AMDESE/AMDSEV.git"
+    dest: "{{ build_cache_directory }}/AMDSEV"
+    version: "snp-latest"
+    force: true
+  tags:
+    - "always"
+# -------------------------------------------------------------------------------------------------
+- name: "Import snphost build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_snphost.yml"
+  tags:
+    - "build_snphost"
+# -------------------------------------------------------------------------------------------------
+- name: "Import snpguest build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_snpguest.yml"
+  tags:
+    - "build_snpguest"
+# -------------------------------------------------------------------------------------------------
+- name: "Import KBS build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_kbs.yml"
+  tags:
+    - "build_kbs"
+# -------------------------------------------------------------------------------------------------
+- name: "Import kbs-client build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_kbs-client.yml"
+  tags:
+    - "build_kbs-client"
+# -------------------------------------------------------------------------------------------------
+- name: "Import u-root build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_u-root.yml"
+  tags:
+    - "build_u-root"
+# -------------------------------------------------------------------------------------------------
+- name: "Import build script patch tasks"
+  ansible.builtin.import_tasks:
+    file: "patch_build_script.yml"
+  tags:
+    - "build_qemu"
+    - "build_ovmf"
+    - "build_host_kernel"
+    - "build_guest_kernel"
+# -------------------------------------------------------------------------------------------------
+- name: "Import QEMU build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_qemu.yml"
+  tags:
+    - "build_qemu"
+# -------------------------------------------------------------------------------------------------
+- name: "Import OVMF build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_ovmf.yml"
+  tags:
+    - "build_ovmf"
+# -------------------------------------------------------------------------------------------------
+- name: "Import host kernel build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_host_kernel.yml"
+  tags:
+    - "build_host_kernel"
+# -------------------------------------------------------------------------------------------------
+- name: "Import guest kernel build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_guest_kernel.yml"
+  tags:
+    - "build_guest_kernel"
+# -------------------------------------------------------------------------------------------------
+- name: "Import guest initrd build tasks"
+  ansible.builtin.import_tasks:
+    file: "build_guest_initrd.yml"
+  tags:
+    - "build_guest_initrd"
+# -------------------------------------------------------------------------------------------------
+- name: "Import guest measurement tasks"
+  ansible.builtin.import_tasks:
+    file: "measure_guest.yml"
+  tags:
+    - "measure_guest"
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch remaining build artifacts to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/{{ item }}"
+    dest: "artifacts/"
+    flat: true
+  loop:
+    - "guest_initrd.cpio"
+    - "AMDSEV/kvm.conf"
+    - "snphost/target/release/libsev.so"
+  tags:
+    - "always"

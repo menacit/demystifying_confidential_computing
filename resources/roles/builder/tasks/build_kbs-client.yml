@@ -1,0 +1,22 @@
+# -------------------------------------------------------------------------------------------------
+- name: "Clone trustee repository"
+  ansible.builtin.git:
+    repo: "https://github.com/confidential-containers/trustee.git"
+    dest: "{{ build_cache_directory }}/trustee"
+# -------------------------------------------------------------------------------------------------
+- name: "Build Trustee kbs-client"
+  ansible.builtin.command:
+    argv:
+      - "cargo"
+      - "build"
+      - "--release"
+      - "--no-default-features"
+      - "--features"
+      - "snp-attester,sample_only"
+    chdir: "{{ build_cache_directory }}/trustee/tools/kbs-client"
+# -------------------------------------------------------------------------------------------------
+- name: "Fetch Trustee kbs-client build artifact to management node"
+  ansible.builtin.fetch:
+    src: "{{ build_cache_directory }}/trustee/target/release/kbs-client"
+    dest: "artifacts/kbs-client"
+    flat: true
